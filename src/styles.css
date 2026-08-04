@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: oklch(0.7 0.25 150);
+  --color-primary-foreground: oklch(0.2 0.05 150);
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+  --color-border: #1e293b;
+
+  --color-gold: #FFD700;
+  --color-silver: #C0C0C0;
+  --color-bronze: #CD7F32;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.shadow-glow {
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
+}

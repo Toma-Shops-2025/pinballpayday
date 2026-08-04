@@ -1,0 +1,7 @@
+node_modules
+dist
+android/app/build
+android/app/src/main/assets/public
+capacitor.config.json
+.DS_Store
+.env
