@@ -61,7 +61,7 @@ function PinballPortalLobby() {
         {/* Top Header */}
         <header className="px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20">
           <div>
-              <h1 className="text-3xl font-black italic tracking-tighter text-white drop-shadow-lg leading-none">PINBALL<span className="text-primary not-italic">PAYDAY</span></h1>
+              <h1 className="text-3xl font-black italic tracking-tighter text-white drop-shadow-lg leading-none">LOOT<span className="text-primary not-italic">LAGOON</span></h1>
               <p className="text-[10px] text-slate-400 uppercase tracking-[0.3em] font-bold mt-1 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-500" /> SECURE VAULT v2.0
               </p>
