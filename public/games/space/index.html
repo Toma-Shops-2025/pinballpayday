@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Space Frontiers Pinball</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #020617; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui { position: absolute; top: 20px; width: 100%; text-align: center; color: #22d3ee; font-size: 28px; font-weight: 900; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+    <div id="ui">CREDITS: 0</div>
+    <script>
+        const { Engine, Render, Runner, World, Bodies, Body, Events, Constraint } = Matter;
+        const engine = Engine.create({ gravity: { x: 0, y: 0.8 } }); // Lower gravity for space!
+        const render = Render.create({ element: document.body, engine: engine, options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: 'transparent' } });
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        const wallOpt = { isStatic: true, render: { fillStyle: '#1e293b' } };
+        World.add(engine.world, [
+            Bodies.rectangle(w/2, 0, w, 40, wallOpt),
+            Bodies.rectangle(0, h/2, 40, h, wallOpt),
+            Bodies.rectangle(w, h/2, 40, h, wallOpt)
+        ]);
+
+        function createFlipper(x, y, side) {
+            const flipper = Bodies.rectangle(x, y, 100, 24, { chamfer: { radius: 12 }, render: { fillStyle: '#a855f7' } });
+            const pivot = Bodies.circle(side === 'left' ? x-40 : x+40, y, 5, { isStatic: true, isSensor: true, render: { visible: false } });
+            const constraint = Constraint.create({ bodyA: flipper, pointA: { x: side === 'left' ? -40 : 40, y: 0 }, bodyB: pivot, length: 0, stiffness: 0.95 });
+            return { body: flipper, constraint, pivot };
+        }
+
+        const leftF = createFlipper(w*0.35, h-100, 'left');
+        const rightF = createFlipper(w*0.65, h-100, 'right');
+        World.add(engine.world, [leftF.body, leftF.pivot, leftF.constraint, rightF.body, rightF.pivot, rightF.constraint]);
+
+        const bumpers = [
+            Bodies.circle(w*0.5, h*0.4, 40, { isStatic: true, label: 'bumper', restitution: 2.2, render: { fillStyle: '#22d3ee', strokeStyle: '#fff', lineWidth: 4 } }),
+            Bodies.circle(w*0.2, h*0.2, 20, { isStatic: true, label: 'bumper', restitution: 1.8, render: { fillStyle: '#ec4899' } }),
+            Bodies.circle(w*0.8, h*0.2, 20, { isStatic: true, label: 'bumper', restitution: 1.8, render: { fillStyle: '#ec4899' } })
+        ];
+        World.add(engine.world, bumpers);
+
+        const drain = Bodies.rectangle(w/2, h+50, w, 100, { isStatic: true, isSensor: true, label: 'drain' });
+        World.add(engine.world, drain);
+
+        let score = 0;
+        let balls = 3;
+
+        function spawnBall() {
+            const ball = Bodies.circle(w/2, 100, 14, { restitution: 0.7, label: 'ball', render: { fillStyle: '#fff', strokeStyle: '#22d3ee', lineWidth: 2 } });
+            World.add(engine.world, ball);
+        }
+
+        spawnBall();
+
+        window.addEventListener('touchstart', (e) => {
+            const touchX = e.touches[0].clientX;
+            if (touchX < w/2) Body.setAngularVelocity(leftF.body, -0.5);
+            else Body.setAngularVelocity(rightF.body, 0.5);
+        });
+
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach(pair => {
+                if (pair.bodyA.label === 'bumper' || pair.bodyB.label === 'bumper') {
+                    score += 1200;
+                    document.getElementById('ui').innerText = 'CREDITS: ' + score.toLocaleString();
+                }
+                if (pair.bodyA.label === 'drain' || pair.bodyB.label === 'drain') {
+                    balls--;
+                    if (balls <= 0) {
+                        window.parent.postMessage({ type: "GAME_OVER", score: score }, "*");
+                    } else {
+                        spawnBall();
+                    }
+                }
+            });
+        });
+
+        Render.run(render);
+        Runner.run(Runner.create(), engine);
+    </script>
+</body>
+</html>

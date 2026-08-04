@@ -3,49 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Fair Wind Pinball</title>
+    <title>Wild West Pinball</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background: #0c4a6e; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; padding: 0; background: #451a03; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
         canvas { display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 20px; right: 20px; color: #fbbf24; font-size: 24px; font-weight: 900; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        #ui { position: absolute; top: 20px; left: 20px; color: #f59e0b; font-size: 24px; font-weight: 900; }
     </style>
 </head>
 <body>
-    <div id="ui">0</div>
+    <div id="ui">BOUNTY: 0</div>
     <script>
-        // STABLE PINBALL ENGINE CORE
-        const { Engine, Render, Runner, World, Bodies, Body, Events, Mouse, MouseConstraint, Constraint } = Matter;
-        const engine = Engine.create({ gravity: { x: 0, y: 1.2 } });
+        const { Engine, Render, Runner, World, Bodies, Body, Events, Constraint } = Matter;
+        const engine = Engine.create({ gravity: { x: 0, y: 1.5 } });
         const render = Render.create({ element: document.body, engine: engine, options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: 'transparent' } });
 
         const w = window.innerWidth;
         const h = window.innerHeight;
 
-        // TABLE WALLS
-        const wallOpt = { isStatic: true, render: { fillStyle: '#1e293b' } };
+        const wallOpt = { isStatic: true, render: { fillStyle: '#78350f' } };
         World.add(engine.world, [
             Bodies.rectangle(w/2, 0, w, 40, wallOpt),
             Bodies.rectangle(0, h/2, 40, h, wallOpt),
             Bodies.rectangle(w, h/2, 40, h, wallOpt),
-            // Slopes to flippers
-            Bodies.rectangle(w*0.2, h-100, w*0.5, 20, { isStatic: true, angle: 0.5, render: { fillStyle: '#1e293b' } }),
-            Bodies.rectangle(w*0.8, h-100, w*0.5, 20, { isStatic: true, angle: -0.5, render: { fillStyle: '#1e293b' } })
+            Bodies.rectangle(w*0.2, h-100, w*0.5, 20, { isStatic: true, angle: 0.5, render: { fillStyle: '#78350f' } }),
+            Bodies.rectangle(w*0.8, h-100, w*0.5, 20, { isStatic: true, angle: -0.5, render: { fillStyle: '#78350f' } })
         ]);
 
-        // FLIPPERS
         function createFlipper(x, y, side) {
-            const group = Body.nextGroup(true);
-            const flipper = Bodies.rectangle(x, y, 90, 20, {
-                collisionFilter: { group: group },
-                chamfer: { radius: 10 },
-                render: { fillStyle: '#3b82f6' }
-            });
+            const flipper = Bodies.rectangle(x, y, 90, 20, { chamfer: { radius: 10 }, render: { fillStyle: '#fb923c' } });
             const pivot = Bodies.circle(side === 'left' ? x-35 : x+35, y, 5, { isStatic: true, isSensor: true, render: { visible: false } });
-            const constraint = Constraint.create({
-                bodyA: flipper, pointA: { x: side === 'left' ? -35 : 35, y: 0 },
-                bodyB: pivot, length: 0, stiffness: 0.9
-            });
+            const constraint = Constraint.create({ bodyA: flipper, pointA: { x: side === 'left' ? -35 : 35, y: 0 }, bodyB: pivot, length: 0, stiffness: 0.9 });
             return { body: flipper, constraint, pivot };
         }
 
@@ -53,48 +41,42 @@
         const rightF = createFlipper(w*0.65, h-50, 'right');
         World.add(engine.world, [leftF.body, leftF.pivot, leftF.constraint, rightF.body, rightF.pivot, rightF.constraint]);
 
-        // BUMPERS
         const bumpers = [
-            Bodies.circle(w*0.3, h*0.3, 30, { isStatic: true, label: 'bumper', restitution: 1.5, render: { fillStyle: '#f59e0b' } }),
-            Bodies.circle(w*0.7, h*0.3, 30, { isStatic: true, label: 'bumper', restitution: 1.5, render: { fillStyle: '#f59e0b' } }),
-            Bodies.circle(w*0.5, h*0.15, 35, { isStatic: true, label: 'bumper', restitution: 1.5, render: { fillStyle: '#ef4444' } })
+            Bodies.polygon(w*0.5, h*0.2, 5, 40, { isStatic: true, label: 'bumper', restitution: 2, render: { fillStyle: '#facc15' } }),
+            Bodies.circle(w*0.2, h*0.4, 25, { isStatic: true, label: 'bumper', restitution: 1.5, render: { fillStyle: '#b45309' } }),
+            Bodies.circle(w*0.8, h*0.4, 25, { isStatic: true, label: 'bumper', restitution: 1.5, render: { fillStyle: '#b45309' } })
         ];
         World.add(engine.world, bumpers);
 
-        // DRAIN
         const drain = Bodies.rectangle(w/2, h+50, w, 100, { isStatic: true, isSensor: true, label: 'drain' });
         World.add(engine.world, drain);
 
-        // BALL SPAWN
         let score = 0;
         let balls = 3;
 
         function spawnBall() {
-            const ball = Bodies.circle(w-50, h-100, 12, { restitution: 0.5, label: 'ball', render: { fillStyle: '#fff' } });
+            const ball = Bodies.circle(w-50, h-100, 12, { restitution: 0.6, label: 'ball', render: { fillStyle: '#e5e7eb' } });
             World.add(engine.world, ball);
-            Body.applyForce(ball, ball.position, { x: 0, y: -0.05 });
+            Body.applyForce(ball, ball.position, { x: 0, y: -0.06 });
         }
 
         spawnBall();
 
-        // CONTROLS
         window.addEventListener('touchstart', (e) => {
             const touchX = e.touches[0].clientX;
-            if (touchX < w/2) Body.setAngularVelocity(leftF.body, -0.4);
-            else Body.setAngularVelocity(rightF.body, 0.4);
+            if (touchX < w/2) Body.setAngularVelocity(leftF.body, -0.45);
+            else Body.setAngularVelocity(rightF.body, 0.45);
         });
 
-        // COLLISION LOGIC
         Events.on(engine, 'collisionStart', (event) => {
             event.pairs.forEach(pair => {
                 if (pair.bodyA.label === 'bumper' || pair.bodyB.label === 'bumper') {
-                    score += 500;
-                    document.getElementById('ui').innerText = score.toLocaleString();
+                    score += 750;
+                    document.getElementById('ui').innerText = 'BOUNTY: ' + score.toLocaleString();
                 }
                 if (pair.bodyA.label === 'drain' || pair.bodyB.label === 'drain') {
                     balls--;
                     if (balls <= 0) {
-                        // SEND SCORE TO APP
                         window.parent.postMessage({ type: "GAME_OVER", score: score }, "*");
                     } else {
                         spawnBall();
