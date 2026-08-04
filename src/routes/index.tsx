@@ -56,7 +56,7 @@ const PINBALL_TABLES = [
     color: "from-cyan-600 to-blue-950",
     accent: "text-pink-500",
     minBounty: "2,000",
-    status: "locked"
+    status: "active"
   },
   {
     id: "castle",
@@ -66,7 +66,7 @@ const PINBALL_TABLES = [
     color: "from-slate-700 to-stone-900",
     accent: "text-emerald-400",
     minBounty: "1,100",
-    status: "locked"
+    status: "active"
   },
   {
     id: "underwater",
@@ -76,7 +76,7 @@ const PINBALL_TABLES = [
     color: "from-teal-600 to-blue-900",
     accent: "text-cyan-300",
     minBounty: "1,300",
-    status: "locked"
+    status: "active"
   },
   {
     id: "volcano",
@@ -86,7 +86,7 @@ const PINBALL_TABLES = [
     color: "from-red-900 to-black",
     accent: "text-orange-600",
     minBounty: "2,500",
-    status: "locked"
+    status: "active"
   }
 ];
 
