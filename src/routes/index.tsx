@@ -197,26 +197,3 @@ function PinballLobby() {
     </div>
   );
 }
-
-      {/* Elegant Bottom Navigation */}
-      <nav className="fixed bottom-6 left-6 right-6 h-20 bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 px-8 flex justify-between items-center shadow-2xl z-50">
-            <div className="flex flex-col items-center gap-1.5 text-primary scale-110">
-                <Zap className="w-6 h-6 fill-current" />
-                <span className="text-[8px] font-black uppercase tracking-tighter">ARCADE</span>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors">
-                <Trophy className="w-6 h-6" />
-                <span className="text-[8px] font-black uppercase tracking-tighter">RANKS</span>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors">
-                <Star className="w-6 h-6" />
-                <span className="text-[8px] font-black uppercase tracking-tighter">WALLET</span>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors">
-                <Info className="w-6 h-6" />
-                <span className="text-[8px] font-black uppercase tracking-tighter">INFO</span>
-            </div>
-      </nav>
-    </div>
-  );
-}
