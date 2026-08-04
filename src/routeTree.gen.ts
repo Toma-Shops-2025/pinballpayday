@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GameTableIdRouteImport } from './routes/game.$tableId'
+import { Route as PortalPortalIdRouteImport } from './routes/portal.$portalId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const GameTableIdRoute = GameTableIdRouteImport.update({
   path: '/game/$tableId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalPortalIdRoute = PortalPortalIdRouteImport.update({
+  id: '/portal/$portalId',
+  path: '/portal/$portalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/game/$tableId': typeof GameTableIdRoute
+  '/portal/$portalId': typeof PortalPortalIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/game/$tableId': typeof GameTableIdRoute
+  '/portal/$portalId': typeof PortalPortalIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/game/$tableId': typeof GameTableIdRoute
+  '/portal/$portalId': typeof PortalPortalIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/game/$tableId'
+  fullPaths: '/' | '/game/$tableId' | '/portal/$portalId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/game/$tableId'
-  id: '__root__' | '/' | '/game/$tableId'
+  to: '/' | '/game/$tableId' | '/portal/$portalId'
+  id: '__root__' | '/' | '/game/$tableId' | '/portal/$portalId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GameTableIdRoute: typeof GameTableIdRoute
+  PortalPortalIdRoute: typeof PortalPortalIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameTableIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/$portalId': {
+      id: '/portal/$portalId'
+      path: '/portal/$portalId'
+      fullPath: '/portal/$portalId'
+      preLoaderRoute: typeof PortalPortalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GameTableIdRoute: GameTableIdRoute,
+  PortalPortalIdRoute: PortalPortalIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
