@@ -13,7 +13,7 @@ function RootComponent() {
   useTheme();
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans overflow-hidden select-none">
+    <div className="min-h-screen bg-black text-white font-sans select-none">
       <Outlet />
       <Toaster position="top-center" richColors theme="dark" />
     </div>
