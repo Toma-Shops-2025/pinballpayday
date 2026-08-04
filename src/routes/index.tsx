@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Trophy, Coins, Play, Star, Zap, Info, ChevronRight, Lock } from "lucide-react";
+import { Trophy, Coins, Play, Star, Zap, Info, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -39,6 +39,16 @@ const PINBALL_TABLES = [
     status: "active"
   },
   {
+    id: "soccer",
+    name: "Golden Goal",
+    theme: "Stadium Stars",
+    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=400&auto=format&fit=crop",
+    color: "from-emerald-700 to-green-950",
+    accent: "text-green-400",
+    minBounty: "1,100",
+    status: "active"
+  },
+  {
     id: "carnival",
     name: "Fun House",
     theme: "Classic Carnival",
@@ -49,33 +59,13 @@ const PINBALL_TABLES = [
     status: "active"
   },
   {
-    id: "neon",
-    name: "Cyber Punk",
-    theme: "Retro Future",
+    id: "cyber",
+    name: "Neon City",
+    theme: "Cyber Punk 2077",
     image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop",
     color: "from-cyan-600 to-blue-950",
     accent: "text-pink-500",
     minBounty: "2,000",
-    status: "active"
-  },
-  {
-    id: "castle",
-    name: "Knight's Quest",
-    theme: "Medieval Fantasy",
-    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=400&auto=format&fit=crop",
-    color: "from-slate-700 to-stone-900",
-    accent: "text-emerald-400",
-    minBounty: "1,100",
-    status: "active"
-  },
-  {
-    id: "underwater",
-    name: "Deep Blue",
-    theme: "Ocean Depths",
-    image: "https://images.unsplash.com/photo-1551244072-5d12893278ab?q=80&w=400&auto=format&fit=crop",
-    color: "from-teal-600 to-blue-900",
-    accent: "text-cyan-300",
-    minBounty: "1,300",
     status: "active"
   },
   {
@@ -87,11 +77,20 @@ const PINBALL_TABLES = [
     accent: "text-orange-600",
     minBounty: "2,500",
     status: "active"
+  },
+  {
+    id: "jewel",
+    name: "Diamond Mine",
+    theme: "Treasure Vault",
+    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=400&auto=format&fit=crop",
+    color: "from-slate-700 to-stone-900",
+    accent: "text-emerald-400",
+    minBounty: "1,100",
+    status: "active"
   }
 ];
 
 function PinballLobby() {
-  const navigate = useNavigate();
   const [balance] = useState(450); // Mock balance
 
   return (
@@ -139,7 +138,7 @@ function PinballLobby() {
       </div>
 
       {/* Tables Grid */}
-      <main className="flex-1 px-4 pb-12">
+      <main className="flex-1 px-4 pb-12 overflow-y-auto">
         <div className="flex items-center justify-between mb-4 px-2">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Select Machine</h3>
             <span className="text-[10px] text-slate-600 font-bold uppercase">8 Tables Available</span>
@@ -147,39 +146,41 @@ function PinballLobby() {
 
         <div className="grid grid-cols-2 gap-4">
             {PINBALL_TABLES.map((table) => (
-                <div
+                <Link
                     key={table.id}
-                    onClick={() => table.status === 'active' && navigate({ to: '/game/$tableId', params: { tableId: table.id } })}
+                    to="/game/$tableId"
+                    params={{ tableId: table.id }}
+                    disabled={table.status !== 'active'}
                     className={cn(
-                        "relative aspect-[4/5] rounded-3xl overflow-hidden border transition-all active:scale-95",
-                        table.status === 'active' ? "border-white/10 hover:border-primary/50 cursor-pointer" : "border-white/5 opacity-60 grayscale cursor-not-allowed"
+                        "relative aspect-[4/5] rounded-3xl overflow-hidden border transition-all active:scale-95 block",
+                        table.status === 'active' ? "border-white/10 hover:border-primary/50 cursor-pointer shadow-xl" : "border-white/5 opacity-60 grayscale cursor-not-allowed"
                     )}
                 >
                     <img src={table.image} className="absolute inset-0 w-full h-full object-cover" alt={table.name} />
-                    <div className={cn("absolute inset-0 bg-gradient-to-t via-transparent", table.color)} />
+                    <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent")} />
 
                     {table.status === 'locked' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                            <div className="bg-black/60 p-3 rounded-full border border-white/20">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px] z-20">
+                            <div className="bg-black/80 p-3 rounded-full border border-white/20">
                                 <Lock className="w-5 h-5 text-slate-400" />
                             </div>
                         </div>
                     )}
 
-                    <div className="absolute bottom-4 left-4 right-4">
-                        <p className={cn("text-[9px] font-black uppercase tracking-tighter", table.accent)}>{table.theme}</p>
-                        <h4 className="text-lg font-black leading-tight uppercase italic">{table.name}</h4>
+                    <div className="absolute bottom-4 left-4 right-4 z-10">
+                        <p className={cn("text-[10px] font-black uppercase tracking-tighter mb-0.5", table.accent)}>{table.theme}</p>
+                        <h4 className="text-xl font-black leading-tight uppercase italic">{table.name}</h4>
                         <div className="mt-2 flex items-center justify-between">
                             <div className="flex items-center gap-1">
                                 <Star className="w-3 h-3 text-yellow-500 fill-current" />
                                 <span className="text-[10px] font-bold">x2.5</span>
                             </div>
-                            <span className="text-[9px] font-black bg-black/40 px-2 py-0.5 rounded-full border border-white/10 italic">
-                                BOUNTY {table.minBounty}
+                            <span className="text-[10px] font-black bg-black/60 px-2 py-1 rounded-md border border-white/10 italic">
+                                {table.minBounty}
                             </span>
                         </div>
                     </div>
-                </div>
+                </Link>
             ))}
         </div>
       </main>
