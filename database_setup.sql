@@ -1,5 +1,7 @@
+-- LOOT LAGOON - COMPLETE DATABASE SETUP
+-- Copy and Paste this into the Supabase SQL Editor
+
 -- 1. PROFILES TABLE
--- Stores user basic info and their current reward point balance
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   username TEXT UNIQUE,
@@ -10,38 +12,59 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. GAME SESSIONS TABLE
--- Tracks every game played, the score, and the reward issued
-CREATE TABLE IF NOT EXISTS public.game_sessions (
+-- 2. TRANSACTIONS TABLE
+CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  game_name TEXT DEFAULT 'pinball_pirate',
-  score BIGINT NOT NULL,
-  reward_points_earned INT DEFAULT 0,
+  amount INT NOT NULL,
+  type TEXT NOT NULL, -- 'offerwall', 'ad_bonus', 'payout', 'game'
+  provider TEXT, -- 'lootably', 'revlum', 'adgem', 'bitlabs', 'unity'
+  status TEXT DEFAULT 'completed',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. ENABLE RLS (Row Level Security)
+-- 3. PAYOUT REQUESTS TABLE
+CREATE TABLE IF NOT EXISTS public.payout_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  amount INT NOT NULL,
+  method TEXT NOT NULL,
+  details TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. ENABLE RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payout_requests ENABLE ROW LEVEL SECURITY;
 
--- 4. POLICIES
-DO $$
+-- 5. POLICIES
+DO $policy$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public profiles are viewable by everyone') THEN
-        CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+    -- Profiles
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public profiles viewable') THEN
+        CREATE POLICY "Public profiles viewable" ON public.profiles FOR SELECT USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users update own profile') THEN
+        CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update own profile') THEN
-        CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+    -- Transactions
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users view own transactions') THEN
+        CREATE POLICY "Users view own transactions" ON public.transactions FOR SELECT USING (auth.uid() = user_id);
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own sessions') THEN
-        CREATE POLICY "Users can view own sessions" ON public.game_sessions FOR SELECT USING (auth.uid() = user_id);
+    -- Payouts
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users view own payouts') THEN
+        CREATE POLICY "Users view own payouts" ON public.payout_requests FOR SELECT USING (auth.uid() = user_id);
     END IF;
-END $$;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users create payouts') THEN
+        CREATE POLICY "Users create payouts" ON public.payout_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
+END $policy$;
 
--- 5. FUNCTION: claim_game_reward
+-- 6. FUNCTION: claim_game_reward
 CREATE OR REPLACE FUNCTION public.claim_game_reward(
   p_game TEXT,
   p_score BIGINT,
@@ -56,17 +79,16 @@ DECLARE
   v_actual_reward INT;
 BEGIN
   v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
 
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
+  -- Simple check: cap reward at 500 points per game session
+  v_actual_reward := LEAST(p_reward_est, 500);
 
-  -- Logic check: 10,000 score = 1 point.
-  v_actual_reward := LEAST(p_reward_est, (p_score / 5000)::INT);
+  -- Log as transaction
+  INSERT INTO public.transactions (user_id, amount, type, provider)
+  VALUES (v_user_id, v_actual_reward, 'game', p_game);
 
-  INSERT INTO public.game_sessions (user_id, game_name, score, reward_points_earned)
-  VALUES (v_user_id, p_game, p_score, v_actual_reward);
-
+  -- Update profile
   UPDATE public.profiles
   SET reward_points = reward_points + v_actual_reward
   WHERE id = v_user_id
@@ -77,35 +99,35 @@ BEGIN
 END;
 $function$;
 
--- 6. FUNCTION: award_points
-CREATE OR REPLACE FUNCTION public.award_points(
-  p_points INT,
-  p_source TEXT
+-- 7. FUNCTION: request_payout
+CREATE OR REPLACE FUNCTION public.request_payout(
+  p_amount INT,
+  p_method TEXT,
+  p_details TEXT
 )
-RETURNS BIGINT
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $function$
 DECLARE
-  v_user_id UUID;
-  v_new_total BIGINT;
+  v_current_balance INT;
 BEGIN
-  v_user_id := auth.uid();
+  SELECT reward_points INTO v_current_balance FROM public.profiles WHERE id = auth.uid();
+  IF v_current_balance < p_amount THEN RAISE EXCEPTION 'Insufficient balance'; END IF;
 
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
+  INSERT INTO public.payout_requests (user_id, amount, method, details)
+  VALUES (auth.uid(), p_amount, p_method, p_details);
 
-  UPDATE public.profiles
-  SET reward_points = reward_points + p_points
-  WHERE id = v_user_id
-  RETURNING reward_points INTO v_new_total;
+  UPDATE public.profiles SET reward_points = reward_points - p_amount WHERE id = auth.uid();
 
-  RETURN v_new_total;
+  INSERT INTO public.transactions (user_id, amount, type, provider, status)
+  VALUES (auth.uid(), -p_amount, 'payout', p_method, 'pending');
+
+  RETURN TRUE;
 END;
 $function$;
 
--- 7. AUTO-CREATE PROFILE ON SIGNUP
+-- 8. AUTO-CREATE PROFILE
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $function$
 BEGIN

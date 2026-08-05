@@ -18,15 +18,19 @@ function PortalContainer() {
   const { portalId } = useParams({ from: "/portal/$portalId" });
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-
-  // Get mock user ID (In production we use supabase.auth.user().id)
-  const userId = "tester_123";
-  const url = PORTAL_URLS[portalId]?.replace("user_id", userId) || "";
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Show an ad before they enter the high-paying zone
+    async function getUserId() {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) setUserId(data.user.id);
+        else setUserId("anonymous_pirate");
+    }
+    getUserId();
     showInterstitial();
   }, [portalId]);
+
+  const url = userId ? PORTAL_URLS[portalId]?.replace("user_id", userId) : "";
 
   return (
     <div className="h-screen w-screen bg-black flex flex-col overflow-hidden relative">

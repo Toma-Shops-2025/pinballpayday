@@ -149,18 +149,24 @@ function PinballPortalLobby() {
                 <Zap className="w-6 h-6 fill-current" />
                 <span className="text-[8px] font-black uppercase tracking-tighter">EARN</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 text-slate-500">
+            <button
+                onClick={() => navigate({ to: "/leaderboard" })}
+                className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors"
+            >
                 <Trophy className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter">RANKS</span>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 text-slate-500">
+            </button>
+            <button
+                onClick={() => navigate({ to: "/cashout" })}
+                className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors"
+            >
                 <Wallet className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter">CASHOUT</span>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 text-slate-500">
+            </button>
+            <button className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors">
                 <Info className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter">INFO</span>
-            </div>
+            </button>
       </nav>
     </div>
   );
