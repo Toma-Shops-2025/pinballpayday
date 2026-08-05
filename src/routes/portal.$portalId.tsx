@@ -2,16 +2,17 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { showInterstitial } from "@/lib/ads";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/portal/$portalId")({
   component: PortalContainer,
 });
 
 const PORTAL_URLS: Record<string, string> = {
-  lootably: "https://wall.lootably.com/webapp/YOUR_LOOTABLY_ID/user_id",
-  revlum: "https://revlum.com/wall/YOUR_REVLUM_ID/user_id",
-  adgem: "https://api.adgem.com/v1/wall?appid=YOUR_ADGEM_ID&playerid=user_id",
-  bitlabs: "https://web.bitlabs.ai/v2/YOUR_BITLABS_ID/user_id",
+  lootably: "https://wall.lootably.com/webapp/YOUR_LOOTABLY_PLACEMENT_ID/user_id",
+  revlum: "https://revlum.com/wall/YOUR_REVLUM_API_KEY/user_id",
+  adgem: "https://api.adgem.com/v1/wall?appid=33143&playerid=user_id",
+  bitlabs: "https://web.bitlabs.ai/v2/YOUR_BITLABS_TOKEN/user_id",
 };
 
 function PortalContainer() {
@@ -48,7 +49,7 @@ function PortalContainer() {
                     {portalId} Zone
                 </h2>
                 <div className="flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                    <ShieldCheck className="w-3 h-3 text-primary" />
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Verified Payouts</span>
                 </div>
             </div>

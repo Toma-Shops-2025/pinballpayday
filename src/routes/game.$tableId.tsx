@@ -113,10 +113,10 @@ function GameContainer() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 flex flex-col items-center gap-1">
-                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Earnings</p>
+                    <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 flex flex-col items-center gap-1">
+                        <p className="text-[9px] font-black text-primary uppercase tracking-widest">Earnings</p>
                         <div className="flex items-center gap-2">
-                            <Coins className="w-4 h-4 text-emerald-400" />
+                            <Coins className="w-4 h-4 text-primary" />
                             <span className="text-2xl font-black">+{reward}</span>
                         </div>
                     </div>

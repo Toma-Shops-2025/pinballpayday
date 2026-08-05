@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "online.pinballpayday.app"
-    compileSdk = rootProject.ext.compileSdkVersion
+    namespace "com.tomashops.lootlagoon"
+    compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "online.pinballpayday.app"
+        applicationId "com.tomashops.lootlagoon"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

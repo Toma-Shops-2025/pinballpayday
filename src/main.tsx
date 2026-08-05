@@ -4,6 +4,10 @@ import { RouterProvider, createRouter, createHashHistory } from "@tanstack/react
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
 import "./styles.css";
+import { initAds } from "./lib/ads";
+
+// Start Monetization Engine
+initAds().catch(console.error);
 
 const queryClient = new QueryClient();
 const hashHistory = createHashHistory();

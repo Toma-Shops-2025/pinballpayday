@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Trophy, Coins, Play, Star, Zap, Info, ShieldCheck, ArrowUpRight, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { showInterstitial } from "@/lib/ads";
 
 export const Route = createFileRoute("/")({
   component: PinballPortalLobby,
@@ -53,27 +55,50 @@ function PinballPortalLobby() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col bg-black text-white font-sans select-none min-h-screen">
+    <div className="flex flex-col bg-black text-white font-sans select-none min-h-screen overflow-y-auto pb-32">
       {/* Dynamic Background */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e293b,0%,#000,100%)] opacity-70 -z-10" />
 
       <div className="flex flex-col w-full max-w-lg mx-auto">
         {/* Top Header */}
-        <header className="px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20">
-          <div>
-              <h1 className="text-3xl font-black italic tracking-tighter text-white drop-shadow-lg leading-none">LOOT<span className="text-primary not-italic">LAGOON</span></h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-[0.3em] font-bold mt-1 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-500" /> SECURE VAULT v2.0
-              </p>
+        <header className="px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-4 flex justify-between items-center z-20">
+          <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-blue-600 p-0.5 shadow-glow">
+                <div className="h-full w-full bg-black rounded-[14px] flex items-center justify-center overflow-hidden">
+                    <img src="/logo.png" className="w-10 h-10 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                    <Zap className="w-6 h-6 text-primary absolute" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-black italic tracking-tighter text-white leading-none">LOOT<span className="text-primary not-italic tracking-normal">LAGOON</span></h1>
+                <p className="text-[9px] text-slate-400 uppercase tracking-[0.3em] font-bold mt-1 flex items-center gap-1">
+                    <ShieldCheck className="w-2.5 h-2.5 text-primary" /> SECURE PAYOUTS
+                </p>
+              </div>
           </div>
 
           <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-2xl">
-                  <Coins className="w-5 h-5 text-primary" />
-                  <span className="font-black text-xl tabular-nums tracking-tighter text-white">450</span>
+              <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-2xl">
+                  <Coins className="w-4 h-4 text-primary" />
+                  <span className="font-black text-lg tabular-nums tracking-tighter text-white italic">1,240</span>
               </div>
           </div>
         </header>
+
+        {/* Featured Banner */}
+        <div className="px-4 mb-4">
+            <div className="relative h-44 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl group">
+                <img
+                    src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=800"
+                    className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-1000 opacity-60"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-8">
+                    <span className="text-[10px] font-black bg-primary text-black px-3 py-1 rounded-full uppercase tracking-widest mb-3 inline-block">Special Event</span>
+                    <h2 className="text-3xl font-black italic uppercase tracking-tighter leading-none">Double Loot<br/>Weekend</h2>
+                </div>
+            </div>
+        </div>
 
         {/* Earning Zones Grid */}
         <main className="px-4 py-2 mb-28 space-y-6">
@@ -127,8 +152,8 @@ function PinballPortalLobby() {
           {/* Quick Stats Ticker */}
           <div className="mx-2 bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                        <Trophy className="w-4 h-4 text-emerald-500" />
+                    <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Trophy className="w-4 h-4 text-primary" />
                     </div>
                     <div>
                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">Recent Winner</p>
@@ -163,7 +188,10 @@ function PinballPortalLobby() {
                 <Wallet className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter">CASHOUT</span>
             </button>
-            <button className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors">
+            <button
+                onClick={() => toast.info("Loot Lagoon v2.0 - Earn rewards by playing games and completing offers!")}
+                className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-white transition-colors"
+            >
                 <Info className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter">INFO</span>
             </button>

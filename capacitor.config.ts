@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'online.pinballpayday.app',
-  appName: 'Pinball Payday',
+  appId: 'com.tomashops.lootlagoon',
+  appName: 'Loot Lagoon',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

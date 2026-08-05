@@ -33,7 +33,10 @@
             android:value="ca-app-pub-7552743356249250~3141333538"
         />
 
-        <meta-data android:name="applovin.sdk.key" android:value="LAn9vS8N9W9rK_K_f0O3Z8_S5L9oU8_eW6A5K7V5C7B7D7F7G7H7J7K7L7M7N7P7Q7R7S7T7U7V7W7X7Y7Z" />
+        <meta-data
+            android:name="applovin.sdk.key"
+            android:value="LAn9vS8N9W9rK_K_f0O3Z8_S5L9oU8_eW6A5K7V5C7B7D7F7G7H7J7K7L7M7N7P7Q7R7S7T7U7V7W7X7Y7Z"
+        />
     </application>
 
     <!-- Permissions -->
