@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Trophy, Coins, Play, Star, Zap, Info, ShieldCheck, ArrowUpRight, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { showInterstitial } from "@/lib/ads";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: PinballPortalLobby,
@@ -53,6 +55,18 @@ const EARNING_PORTALS = [
 
 function PinballPortalLobby() {
   const navigate = useNavigate();
+  const [points, setPoints] = useState(0);
+
+  useEffect(() => {
+    async function fetchPoints() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data } = await supabase.from('profiles').select('reward_points').eq('id', user.id).single();
+            if (data) setPoints(data.reward_points);
+        }
+    }
+    fetchPoints();
+  }, []);
 
   return (
     <div className="flex flex-col bg-black text-white font-sans select-none min-h-screen overflow-y-auto pb-32">
@@ -80,7 +94,7 @@ function PinballPortalLobby() {
           <div className="flex items-center gap-2">
               <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-2xl">
                   <Coins className="w-4 h-4 text-primary" />
-                  <span className="font-black text-lg tabular-nums tracking-tighter text-white italic">1,240</span>
+                  <span className="font-black text-lg tabular-nums tracking-tighter text-white italic">{points.toLocaleString()}</span>
               </div>
           </div>
         </header>

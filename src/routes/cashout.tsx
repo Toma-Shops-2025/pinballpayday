@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Wallet, Landmark, Smartphone, Gift, ChevronRight, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/cashout")({
   component: CashoutScreen,
@@ -15,6 +17,18 @@ const CASHOUT_OPTIONS = [
 
 function CashoutScreen() {
   const navigate = useNavigate();
+  const [points, setPoints] = useState(0);
+
+  useEffect(() => {
+    async function fetchPoints() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data } = await supabase.from('profiles').select('reward_points').eq('id', user.id).single();
+            if (data) setPoints(data.reward_points);
+        }
+    }
+    fetchPoints();
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white font-sans select-none">
@@ -31,8 +45,8 @@ function CashoutScreen() {
         <div className="bg-gradient-to-br from-slate-900 to-black border border-white/10 rounded-[2rem] p-8 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet className="w-24 h-24 rotate-12" /></div>
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Available for Payout</p>
-            <p className="text-5xl font-black tracking-tighter text-white tabular-nums">450</p>
-            <p className="text-xs text-primary font-bold mt-2">$0.45 USD</p>
+            <p className="text-5xl font-black tracking-tighter text-white tabular-nums">{points.toLocaleString()}</p>
+            <p className="text-xs text-primary font-bold mt-2">${(points / 1000).toFixed(2)} USD</p>
         </div>
 
         <div className="space-y-3 pb-24">
