@@ -68,7 +68,7 @@ const MINI_GAMES = [
 
 function LootLagoonLobby() {
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading, signIn, signUp, addCash } = useAuth();
+  const { user, profile, loading: authLoading, signIn, signUp, addCash, fetchProfile } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,8 +95,11 @@ function LootLagoonLobby() {
                 icon: '💰'
             });
         }
+    } else if (user) {
+        // Just refresh balance if no session was pending
+        fetchProfile(user.id);
     }
-  }, [user, addCash]);
+  }, [user, addCash, fetchProfile]);
 
   useEffect(() => {
     if (!user) return;

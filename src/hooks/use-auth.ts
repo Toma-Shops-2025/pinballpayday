@@ -48,7 +48,7 @@ export function useAuth() {
 
   const addCash = async (amount: number) => {
     if (!user) return;
-    const val = parseFloat(amount.toFixed(4)); // High precision for small earnings
+    const val = parseFloat(amount.toFixed(4));
 
     try {
         console.log(`Loot Lagoon: Adding $${val}...`);
@@ -71,6 +71,7 @@ export function useAuth() {
             if (updateError) throw updateError;
         }
 
+        // IMPORTANT: Trigger a refresh after adding cash
         await fetchProfile(user.id);
     } catch (e: any) {
         console.error("Vault Error:", e);
