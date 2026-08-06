@@ -13,46 +13,10 @@ export const Route = createFileRoute("/")({
 });
 
 const EARNING_PORTALS = [
-  {
-    id: "games",
-    name: "GAME GALAXY",
-    desc: "1,000+ Premium Games",
-    url: "https://gamedistribution.com/games?utm_source=lootlagoon&utm_medium=app",
-    color: "from-cyan-500 to-blue-900",
-    accent: "text-cyan-400",
-    icon: Gamepad2,
-    bonus: "INSTANT"
-  },
-  {
-    id: "gamepix",
-    name: "MYSTIC ARCADE",
-    desc: "Action & Adventure Hub",
-    url: "https://www.gamepix.com/play?sid=70000",
-    color: "from-blue-600 to-indigo-900",
-    accent: "text-blue-400",
-    icon: Play,
-    bonus: "NEW"
-  },
-  {
-    id: "video",
-    name: "VIDEO VAULT",
-    desc: "Watch Ads, Earn Fast",
-    url: "",
-    color: "from-blue-400 to-cyan-800",
-    accent: "text-white",
-    icon: Zap,
-    bonus: "UNLIMITED"
-  },
-  {
-    id: "fortune",
-    name: "DAILY FORTUNE",
-    desc: "Instant Win Games",
-    url: "https://m.famobi.com/html5-games?partner=lootlagoon",
-    color: "from-cyan-600 to-blue-950",
-    accent: "text-cyan-300",
-    icon: Coins,
-    bonus: "HOT"
-  }
+  { id: "games", name: "GAME GALAXY", desc: "1,000+ Premium Games", url: "https://gamedistribution.com/games?utm_source=lootlagoon&utm_medium=app", color: "from-cyan-500 to-blue-900", accent: "text-cyan-400", icon: Gamepad2, bonus: "INSTANT" },
+  { id: "gamepix", name: "MYSTIC ARCADE", desc: "Action & Adventure Hub", url: "https://www.gamepix.com/play?sid=70000", color: "from-blue-600 to-indigo-900", accent: "text-blue-400", icon: Play, bonus: "NEW" },
+  { id: "video", name: "VIDEO VAULT", desc: "Watch Ads, Earn Fast", url: "", color: "from-blue-400 to-cyan-800", accent: "text-white", icon: Zap, bonus: "UNLIMITED" },
+  { id: "fortune", name: "DAILY FORTUNE", desc: "Instant Win Games", url: "https://m.famobi.com/html5-games?partner=lootlagoon", color: "from-cyan-600 to-blue-950", accent: "text-cyan-300", icon: Coins, bonus: "HOT" }
 ];
 
 const MINI_GAMES = [
@@ -69,16 +33,8 @@ const MINI_GAMES = [
 function AppBackground() {
     return (
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-black">
-          <div
-              className="absolute inset-0 opacity-[0.3]"
-              style={{
-                  backgroundImage: 'url(/bg-loot.png)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat'
-              }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
+          <div className="absolute inset-0 opacity-[0.3]" style={{ backgroundImage: 'url(/bg-loot.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black" />
       </div>
     )
 }
@@ -98,25 +54,28 @@ function LootLagoonLobby() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Audio Logic
+  // Audio Logic - Optimized to avoid loops
   useEffect(() => {
     if (user && hasInteracted) {
         if (!audioRef.current) {
             audioRef.current = new Audio('/bg-music.mp3');
             audioRef.current.loop = true;
-            audioRef.current.volume = 0.2;
+            audioRef.current.volume = 0.15;
         }
-        audioRef.current.play().catch(e => console.log("Autoplay blocked", e));
+        audioRef.current.play().catch(e => console.log("Audio play blocked", e));
     }
-    return () => {
-        audioRef.current?.pause();
-    };
+    // No cleanup pause() here, it causes flickering/freezing on re-renders
   }, [user, hasInteracted]);
 
+  // Handle interaction once
   useEffect(() => {
     const handleInteraction = () => setHasInteracted(true);
     window.addEventListener('click', handleInteraction, { once: true });
-    return () => window.removeEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction, { once: true });
+    return () => {
+        window.removeEventListener('click', handleInteraction);
+        window.removeEventListener('touchstart', handleInteraction);
+    };
   }, []);
 
   const checkRewards = useCallback(async () => {
@@ -125,28 +84,26 @@ function LootLagoonLobby() {
         const start = parseInt(startTime);
         const now = Date.now();
         const elapsedMinutes = Math.floor((now - start) / 60000);
+        localStorage.removeItem('ll_session_start');
 
         if (elapsedMinutes >= 1) {
             const reward = 0.05 + (elapsedMinutes * 0.02);
-            localStorage.removeItem('ll_session_start');
             await addCash(reward);
             toast.success(`Loot Secured! +$${reward.toFixed(2)}`, { icon: '💰' });
         }
-    } else if (user) {
-        fetchProfile(user.id);
     }
-  }, [user, addCash, fetchProfile]);
+  }, [user, addCash]);
 
+  // Run checkRewards only on mount or visibility change (not on every profile update!)
   useEffect(() => {
     if (!user) return;
     checkRewards();
     const onFocus = () => { if (document.visibilityState === 'visible') checkRewards(); };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener('visibilitychange', onFocus);
+    return () => window.removeEventListener('visibilitychange', onFocus);
   }, [user, checkRewards]);
 
   const openPortal = async (portalId: string, url: string) => {
-    audioRef.current?.pause(); // Stop music when entering portal
     if (portalId === 'video') {
         handleWatchReward();
         return;
@@ -161,12 +118,10 @@ function LootLagoonLobby() {
   }
 
   const handleWatchReward = async () => {
-    audioRef.current?.pause(); // Stop music for ad
     const res = await showRewardedAd();
     if (res.success) {
         await addCash(0.10);
     }
-    if (hasInteracted) audioRef.current?.play(); // Resume after ad
   }
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -180,10 +135,8 @@ function LootLagoonLobby() {
     try {
         if (isLogin) {
             await signIn(email, password);
-            toast.success("Welcome back, Pirate!");
         } else {
             await signUp(email, password, username);
-            toast.success("Welcome to the Lagoon!");
         }
     } catch (error: any) {
         toast.error("Auth Failed", { description: error.message });
@@ -196,12 +149,11 @@ function LootLagoonLobby() {
     <div className="h-screen w-full bg-[#020617] flex flex-col items-center justify-center text-white">
         <AppBackground />
         <Loader2 className="animate-spin h-10 w-10 mb-4 text-[#00d2ff] relative z-10" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] relative z-10">Opening the Vault...</span>
     </div>
   );
 
   if (!user) return (
-    <div className="min-h-screen w-full bg-black flex flex-col text-white relative p-8 justify-center">
+    <div className="min-h-screen w-full bg-black flex flex-col text-white relative p-8 justify-center overflow-y-auto">
         <AppBackground />
         <div className="relative z-10 text-center space-y-2 mb-12">
             <h1 className="text-6xl font-black italic tracking-tighter uppercase leading-none">LOOT<br/><span className="text-[#00d2ff]">LAGOON</span></h1>
@@ -246,12 +198,11 @@ function LootLagoonLobby() {
       <AppBackground />
 
       <div className="flex flex-col w-full max-w-lg mx-auto relative z-10">
-        <header className="px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-4 flex justify-between items-center z-20">
+        <header className="px-6 pt-12 pb-4 flex justify-between items-center z-20">
           <div className="flex items-center gap-3 text-left">
               <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#00d2ff] to-blue-600 p-0.5 shadow-[0_0_20px_rgba(0,210,255,0.3)]">
                 <div className="h-full w-full bg-black rounded-[14px] flex items-center justify-center overflow-hidden">
                     <img src="/logo.png" className="w-10 h-10 object-contain" />
-                    <Zap className="w-6 h-6 text-[#00d2ff] absolute opacity-20" />
                 </div>
               </div>
               <div>
@@ -336,7 +287,7 @@ function LootLagoonLobby() {
                 <Wallet className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter italic">Wins</span>
             </button>
-            <button onClick={() => toast.info("Loot Lagoon v2.2 - Welcome aboard!")} className="flex flex-col items-center gap-1.5 text-white/40">
+            <button onClick={() => toast.info("Loot Lagoon v2.3 - Stable Build")} className="flex flex-col items-center gap-1.5 text-white/40">
                 <Info className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter italic">Info</span>
             </button>

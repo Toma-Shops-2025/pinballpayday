@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const isInitialFetchDone = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -27,15 +28,16 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    // 1. Handle Session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
           setUser(session.user);
-          fetchProfile(session.user.id);
+          if (!isInitialFetchDone.current) {
+            fetchProfile(session.user.id);
+            isInitialFetchDone.current = true;
+          }
       } else { setLoading(false); }
     });
 
-    // 2. Handle Auth Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
           setUser(session.user);
@@ -47,42 +49,41 @@ export function useAuth() {
       }
     });
 
-    // 3. REAL-TIME BALANCE UPDATES (The "Pro" Fix)
-    let profileSubscription: any;
-    if (user) {
-        profileSubscription = supabase
-            .channel(`profile-${user.id}`)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'profiles',
-                filter: `id=eq.${user.id}`
-            }, (payload) => {
-                console.log("Real-time balance update received!", payload.new);
-                setProfile(payload.new);
-            })
-            .subscribe();
-    }
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  // Realtime subscription in a separate effect to prevent loops
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+        .channel(`profile-${user.id}`)
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`
+        }, (payload) => {
+            setProfile(payload.new);
+        })
+        .subscribe();
 
     return () => {
-        subscription.unsubscribe();
-        if (profileSubscription) supabase.removeChannel(profileSubscription);
+        supabase.removeChannel(channel);
     };
-  }, [user, fetchProfile]);
+  }, [user]);
 
-  const addCash = async (amount: number) => {
+  const addCash = useCallback(async (amount: number) => {
     if (!user) return;
     const val = parseFloat(amount.toFixed(4));
 
     try {
-        // We call the RPC - the real-time listener above will handle the UI update!
         const { error: rpcError } = await supabase.rpc('increment_cash_balance', {
             user_id: user.id,
             amount: val
         });
 
         if (rpcError) {
-            // Fallback for local testing if RPC isn't deployed
             const { data: current } = await supabase.from('profiles').select('cash_balance').eq('id', user.id).single();
             const newTotal = parseFloat(((current?.cash_balance || 0) + val).toFixed(4));
             await supabase.from('profiles').update({ cash_balance: newTotal }).eq('id', user.id);
@@ -90,17 +91,17 @@ export function useAuth() {
     } catch (e: any) {
         console.error("Vault Error:", e);
     }
-  };
+  }, [user]);
 
-  const signIn = async (email: string, pass: string) => {
+  const signIn = useCallback(async (email: string, pass: string) => {
       const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
-  };
+  }, []);
 
-  const signUp = async (email: string, pass: string, username: string) => {
+  const signUp = useCallback(async (email: string, pass: string, username: string) => {
       const { data, error } = await supabase.auth.signUp({
-          email: e,
-          password: p,
+          email,
+          password: pass,
           options: { data: { username } }
       });
       if (error) throw error;
@@ -112,9 +113,9 @@ export function useAuth() {
               cash_balance: 0
           });
       }
-  };
+  }, []);
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = useCallback(() => supabase.auth.signOut(), []);
 
   return { user, profile, loading, signIn, signUp, signOut, addCash, fetchProfile, supabase };
 }
