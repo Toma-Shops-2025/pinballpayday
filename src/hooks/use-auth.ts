@@ -10,17 +10,28 @@ export function useAuth() {
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+        // Fetch all potential balance columns to be safe
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, cash_balance, reward_points, total_earned')
+            .eq('id', userId)
+            .maybeSingle();
+
         if (data) {
-            setProfile(data);
+            // Unify the balance: use cash_balance if it exists, otherwise fallback to reward_points
+            const unifiedBalance = data.cash_balance ?? (Number(data.reward_points || 0) / 1000);
+            setProfile({ ...data, cash_balance: unifiedBalance });
         } else {
-            const { data: { session } } = await supabase.auth.getSession();
-            const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || 'Member';
-            const { data: newP } = await supabase.from('profiles').insert({ id: userId, username: username, cash_balance: 0 }).select().single();
+            // Create profile if missing
+            const { data: newP } = await supabase
+                .from('profiles')
+                .insert({ id: userId, cash_balance: 0 })
+                .select()
+                .single();
             if (newP) setProfile(newP);
         }
     } catch (e) {
-        console.error(e);
+        console.error("Profile Fetch Error:", e);
     } finally {
         setLoading(false);
     }
@@ -51,51 +62,46 @@ export function useAuth() {
     const val = parseFloat(amount.toFixed(4));
 
     try {
-        console.log(`Loot Lagoon: Adding $${val}...`);
-
+        // Try the secure database function first
         const { error: rpcError } = await supabase.rpc('increment_cash_balance', {
             user_id: user.id,
             amount: val
         });
 
         if (rpcError) {
-            console.warn("RPC failed, trying direct table update...", rpcError);
+            console.warn("RPC failed, trying direct update...");
+            // Fallback: Direct table update if function isn't deployed yet
             const { data: current } = await supabase.from('profiles').select('cash_balance').eq('id', user.id).single();
             const newTotal = parseFloat(((current?.cash_balance || 0) + val).toFixed(4));
-
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ cash_balance: newTotal })
-                .eq('id', user.id);
-
-            if (updateError) throw updateError;
+            await supabase.from('profiles').update({ cash_balance: newTotal }).eq('id', user.id);
         }
 
-        // IMPORTANT: Trigger a refresh after adding cash
+        // Force a fresh pull from the database
         await fetchProfile(user.id);
+        toast.success(`Success! +$${val.toFixed(2)}`);
     } catch (e: any) {
         console.error("Vault Error:", e);
-        toast.error("Vault Sync Error", { description: e.message || "Database connection lost." });
+        toast.error("Sync Error");
     }
   };
 
-  const signIn = async (e: string, p: string) => {
-      const { error } = await supabase.auth.signInWithPassword({ email: e, password: p });
+  const signIn = async (email: string, pass: string) => {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
   };
 
-  const signUp = async (e: string, p: string, u: string) => {
+  const signUp = async (email: string, pass: string, username: string) => {
       const { data, error } = await supabase.auth.signUp({
-          email: e,
-          password: p,
-          options: { data: { username: u } }
+          email,
+          password: pass,
+          options: { data: { username } }
       });
       if (error) throw error;
       if (data.user) {
           await supabase.from('profiles').insert({
               id: data.user.id,
-              username: u,
-              email: e,
+              username,
+              email,
               cash_balance: 0
           });
       }
