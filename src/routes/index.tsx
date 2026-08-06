@@ -43,9 +43,7 @@ function LootLagoonLobby() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, signIn, signUp, addCash, fetchProfile } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [formData, setFormData] = useState({ email: '', password: '', username: '' });
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
@@ -54,36 +52,28 @@ function LootLagoonLobby() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Audio Logic - Optimized to avoid loops
+  // Audio Logic - Safer implementation
   useEffect(() => {
-    if (user && hasInteracted) {
-        if (!audioRef.current) {
-            audioRef.current = new Audio('/bg-music.mp3');
-            audioRef.current.loop = true;
-            audioRef.current.volume = 0.15;
-        }
-        audioRef.current.play().catch(e => console.log("Audio play blocked", e));
+    if (user && hasInteracted && !audioRef.current) {
+        const audio = new Audio('/bg-music.mp3');
+        audio.loop = true;
+        audio.volume = 0.15;
+        audio.play().catch(e => console.log("Lobby: Audio blocked"));
+        audioRef.current = audio;
     }
-    // No cleanup pause() here, it causes flickering/freezing on re-renders
-  }, [user, hasInteracted]);
-
-  // Handle interaction once
-  useEffect(() => {
-    const handleInteraction = () => setHasInteracted(true);
-    window.addEventListener('click', handleInteraction, { once: true });
-    window.addEventListener('touchstart', handleInteraction, { once: true });
     return () => {
-        window.removeEventListener('click', handleInteraction);
-        window.removeEventListener('touchstart', handleInteraction);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
     };
-  }, []);
+  }, [user, hasInteracted]);
 
   const checkRewards = useCallback(async () => {
     const startTime = localStorage.getItem('ll_session_start');
     if (startTime && user) {
         const start = parseInt(startTime);
-        const now = Date.now();
-        const elapsedMinutes = Math.floor((now - start) / 60000);
+        const elapsedMinutes = Math.floor((Date.now() - start) / 60000);
         localStorage.removeItem('ll_session_start');
 
         if (elapsedMinutes >= 1) {
@@ -94,7 +84,6 @@ function LootLagoonLobby() {
     }
   }, [user, addCash]);
 
-  // Run checkRewards only on mount or visibility change (not on every profile update!)
   useEffect(() => {
     if (!user) return;
     checkRewards();
@@ -104,8 +93,10 @@ function LootLagoonLobby() {
   }, [user, checkRewards]);
 
   const openPortal = async (portalId: string, url: string) => {
+    setHasInteracted(true); // Trigger music on first portal click
     if (portalId === 'video') {
-        handleWatchReward();
+        const res = await showRewardedAd();
+        if (res.success) await addCash(0.10);
         return;
     }
     localStorage.setItem('ll_session_start', Date.now().toString());
@@ -114,13 +105,6 @@ function LootLagoonLobby() {
         await Browser.open({ url, toolbarColor: '#020617' });
     } else {
         window.open(url, '_blank');
-    }
-  }
-
-  const handleWatchReward = async () => {
-    const res = await showRewardedAd();
-    if (res.success) {
-        await addCash(0.10);
     }
   }
 
@@ -133,11 +117,12 @@ function LootLagoonLobby() {
     }
     setLoading(true);
     try {
-        if (isLogin) {
-            await signIn(email, password);
-        } else {
-            await signUp(email, password, username);
-        }
+        const res = isLogin
+            ? await signIn(formData.email, formData.password)
+            : await signUp(formData.email, formData.password, formData.username);
+
+        if (res?.error) throw res.error;
+        setHasInteracted(true);
     } catch (error: any) {
         toast.error("Auth Failed", { description: error.message });
     } finally {
@@ -147,39 +132,37 @@ function LootLagoonLobby() {
 
   if (authLoading) return (
     <div className="h-screen w-full bg-[#020617] flex flex-col items-center justify-center text-white">
-        <AppBackground />
-        <Loader2 className="animate-spin h-10 w-10 mb-4 text-[#00d2ff] relative z-10" />
+        <Loader2 className="animate-spin h-10 w-10 text-[#00d2ff]" />
     </div>
   );
 
   if (!user) return (
-    <div className="min-h-screen w-full bg-black flex flex-col text-white relative p-8 justify-center overflow-y-auto">
+    <div className="min-h-screen w-full bg-black flex flex-col text-white relative p-8 justify-center overflow-y-auto" onClick={() => setHasInteracted(true)}>
         <AppBackground />
         <div className="relative z-10 text-center space-y-2 mb-12">
-            <h1 className="text-6xl font-black italic tracking-tighter uppercase leading-none">LOOT<br/><span className="text-[#00d2ff]">LAGOON</span></h1>
-            <p className="text-xs font-bold tracking-[0.3em] text-white/40 uppercase italic">Your Treasure Awaits</p>
+            <h1 className="text-6xl font-black italic tracking-tighter uppercase leading-none text-white">LOOT<br/><span className="text-[#00d2ff]">LAGOON</span></h1>
         </div>
 
         <form onSubmit={handleAuth} className="w-full max-w-sm space-y-3 relative z-10 mx-auto">
             {!isLogin && (
                 <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md text-left">
                     <UserIcon className="h-5 w-5 text-white/40 mr-3" />
-                    <input type="text" placeholder="PIRATE NAME" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 uppercase" value={username} onChange={e => setUsername(e.target.value)} required />
+                    <input type="text" placeholder="PIRATE NAME" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 uppercase" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} required />
                 </div>
             )}
             <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md text-left">
                 <Mail className="h-5 w-5 text-white/40 mr-3" />
-                <input type="email" placeholder="EMAIL ADDRESS" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 uppercase" value={email} onChange={e => setEmail(e.target.value)} required />
+                <input type="email" placeholder="EMAIL ADDRESS" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 uppercase" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md relative text-left">
                 <Lock className="h-5 w-5 text-white/40 mr-3" />
-                <input type={showPass ? "text" : "password"} placeholder="PASSWORD" handle-auto-focus="false" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 pr-12" value={password} onChange={e => setPassword(e.target.value)} required />
+                <input type={showPass ? "text" : "password"} placeholder="PASSWORD" handle-auto-focus="false" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 pr-12" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 text-white/20">{showPass ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
             </div>
             {!isLogin && (
                 <div className="flex items-center gap-3 px-4 py-2 text-left">
                     <input type="checkbox" id="terms" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="h-4 w-4 rounded border-white/10 bg-black/40 text-primary" />
-                    <label htmlFor="terms" className="text-[10px] text-white/60 font-bold uppercase italic leading-tight">I am 18+ and agree to the Pirate Code</label>
+                    <label htmlFor="terms" className="text-[10px] text-white/60 font-bold uppercase italic leading-tight text-left flex-1">I am 18+ and agree to the Pirate Code</label>
                 </div>
             )}
             <button type="submit" disabled={loading} className="w-full bg-[#00d2ff] text-black py-5 rounded-3xl font-black uppercase tracking-widest shadow-[0_0_25px_rgba(0,210,255,0.4)] active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 italic">
@@ -200,7 +183,7 @@ function LootLagoonLobby() {
       <div className="flex flex-col w-full max-w-lg mx-auto relative z-10">
         <header className="px-6 pt-12 pb-4 flex justify-between items-center z-20">
           <div className="flex items-center gap-3 text-left">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#00d2ff] to-blue-600 p-0.5 shadow-[0_0_20px_rgba(0,210,255,0.3)]">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#00d2ff] to-blue-600 p-0.5">
                 <div className="h-full w-full bg-black rounded-[14px] flex items-center justify-center overflow-hidden">
                     <img src="/logo.png" className="w-10 h-10 object-contain" />
                 </div>
@@ -222,7 +205,7 @@ function LootLagoonLobby() {
         <main className="px-4 py-2 space-y-8">
           <section>
             <div className="flex items-center justify-between px-2 mb-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-[#00d2ff] italic">Earning Zones</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[#00d2ff] italic text-left">Earning Zones</h3>
                 <div className="h-px flex-1 mx-4 bg-white/10" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -237,7 +220,7 @@ function LootLagoonLobby() {
                             <portal.icon className={cn("w-7 h-7", portal.accent)} />
                             <span className="text-[8px] font-black bg-[#00d2ff]/20 px-2 py-0.5 rounded-full text-[#00d2ff] border border-[#00d2ff]/20">{portal.bonus}</span>
                         </div>
-                        <div className="z-10">
+                        <div className="z-10 text-left">
                             <h4 className="text-sm font-black uppercase italic leading-none tracking-tight">{portal.name}</h4>
                             <p className="text-[9px] text-slate-400 mt-1 font-bold">{portal.desc}</p>
                         </div>
@@ -248,7 +231,7 @@ function LootLagoonLobby() {
 
           <section>
             <div className="flex items-center justify-between px-2 mb-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 italic">Arcade Games</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 italic text-left">Arcade Games</h3>
                 <div className="h-px flex-1 mx-4 bg-white/10" />
                 <Gamepad2 className="w-4 h-4 text-slate-500" />
             </div>
@@ -259,7 +242,7 @@ function LootLagoonLobby() {
                         onClick={() => navigate({ to: "/game/$tableId", params: { tableId: game.id } })}
                         className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-center justify-between active:bg-white/10 transition-colors group backdrop-blur-sm"
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 text-left">
                             <span className="text-2xl drop-shadow-md">{game.emoji}</span>
                             <span className="font-black uppercase italic text-sm tracking-tight text-white/90">{game.name}</span>
                         </div>
