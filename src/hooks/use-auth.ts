@@ -11,12 +11,7 @@ export function useAuth() {
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-        const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .maybeSingle();
-
+        const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
         if (data) {
             setProfile(data);
         }
@@ -52,66 +47,43 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
-  // Realtime subscription in a separate effect to prevent loops
   useEffect(() => {
     if (!user) return;
-
-    const channel = supabase
-        .channel(`profile-${user.id}`)
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${user.id}`
-        }, (payload) => {
-            setProfile(payload.new);
-        })
+    const channel = supabase.channel(`profile-${user.id}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        (payload) => { setProfile(payload.new); })
         .subscribe();
-
-    return () => {
-        supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const addCash = useCallback(async (amount: number) => {
     if (!user) return;
     const val = parseFloat(amount.toFixed(4));
-
     try {
-        const { error: rpcError } = await supabase.rpc('increment_cash_balance', {
-            user_id: user.id,
-            amount: val
+        // MATCHING THE SQL NAME EXACTLY
+        const { error: rpcError } = await supabase.rpc('claim_game_reward', {
+            p_game: 'loot_lagoon_action',
+            p_score: 0,
+            p_reward_est: val
         });
 
         if (rpcError) {
-            const { data: current } = await supabase.from('profiles').select('cash_balance').eq('id', user.id).single();
-            const newTotal = parseFloat(((current?.cash_balance || 0) + val).toFixed(4));
-            await supabase.from('profiles').update({ cash_balance: newTotal }).eq('id', user.id);
+            console.error("Database update failed:", rpcError);
+            toast.error("Database sync error. Please check your internet.");
         }
-    } catch (e: any) {
-        console.error("Vault Error:", e);
-    }
+    } catch (e: any) { console.error(e); }
   }, [user]);
 
-  const signIn = useCallback(async (email: string, pass: string) => {
-      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  const signIn = useCallback(async (e: string, p: string) => {
+      const { error } = await supabase.auth.signInWithPassword({ email: e, password: p });
       if (error) throw error;
   }, []);
 
-  const signUp = useCallback(async (email: string, pass: string, username: string) => {
-      const { data, error } = await supabase.auth.signUp({
-          email,
-          password: pass,
-          options: { data: { username } }
-      });
+  const signUp = useCallback(async (e: string, p: string, u: string) => {
+      const { data, error } = await supabase.auth.signUp({ email: e, password: p, options: { data: { username: u } } });
       if (error) throw error;
       if (data.user) {
-          await supabase.from('profiles').insert({
-              id: data.user.id,
-              username,
-              email,
-              cash_balance: 0
-          });
+          await supabase.from('profiles').insert({ id: data.user.id, username: u, email: e, cash_balance: 0 });
       }
   }, []);
 
