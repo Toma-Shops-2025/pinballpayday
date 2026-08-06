@@ -39,13 +39,13 @@ function PortalContainer() {
   const handleVideoAd = async () => {
     const res = await showRewardedAd();
     if (res.success) {
-        // Award 50 points for a quick video
+        // Award $0.10 for a quick video (Exactly like Play'nPayday)
         await supabase.rpc('claim_game_reward', {
             p_game: 'unity_video_vault',
             p_score: 0,
-            p_reward_est: 50
+            p_reward_est: 0.10
         });
-        toast.success("50 Points Awarded!");
+        toast.success("$0.10 Awarded!");
     }
     navigate({ to: "/" });
   };

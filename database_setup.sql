@@ -1,51 +1,44 @@
--- LOOT LAGOON - EMPIRE EDITION SETUP
+-- LOOT LAGOON - FINAL HARMONIZED SETUP
 -- Copy and Paste this into the Supabase SQL Editor
 
--- 1. EXTEND PROFILES TABLE
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cash_balance DECIMAL(12,2) DEFAULT 0.00;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_earned DECIMAL(12,2) DEFAULT 0.00;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+-- 1. ENSURE COLUMNS EXIST
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cash_balance DECIMAL(12,4) DEFAULT 0.0000;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_earned DECIMAL(12,4) DEFAULT 0.0000;
 
--- 2. CREATE PAYOUT_REQUESTS TABLE (REFINED)
-CREATE TABLE IF NOT EXISTS public.payout_requests (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  reward_name TEXT NOT NULL,
-  points_cost BIGINT NOT NULL,
-  status TEXT DEFAULT 'pending',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 3. FUNCTION TO INCREMENT BALANCE SECURELY
-CREATE OR REPLACE FUNCTION public.increment_cash_balance(user_id UUID, amount DECIMAL)
-RETURNS void
+-- 2. UNIFIED REWARD FUNCTION (Handles all income)
+CREATE OR REPLACE FUNCTION public.claim_game_reward(
+  p_game TEXT,
+  p_score BIGINT,
+  p_reward_est DECIMAL -- This is now the dollar amount
+)
+RETURNS TABLE (new_cash_balance DECIMAL)
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $function$
+DECLARE
+  v_user_id UUID;
 BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+  -- Update profile with the dollar amount
   UPDATE public.profiles
   SET
-    cash_balance = cash_balance + amount,
-    total_earned = CASE WHEN amount > 0 THEN total_earned + amount ELSE total_earned END
-  WHERE id = user_id;
+    cash_balance = cash_balance + p_reward_est,
+    total_earned = total_earned + p_reward_est
+  WHERE id = v_user_id
+  RETURNING cash_balance INTO new_cash_balance;
+
+  -- Log the transaction for your records
+  INSERT INTO public.transactions (user_id, amount, type, provider)
+  VALUES (v_user_id, (p_reward_est * 1000)::INT, 'reward', p_game);
+
+  RETURN NEXT;
 END;
 $function$;
 
--- 4. VIEW FOR LEADERBOARD (EXACTLY LIKE PLAYNPAYDAY)
+-- 3. UPDATED LEADERBOARD VIEW
 CREATE OR REPLACE VIEW public.global_leaderboard AS
 SELECT id, username, display_name, avatar_url, cash_balance, total_earned
 FROM public.profiles
 ORDER BY total_earned DESC;
-
--- 5. RE-ENABLE RLS AND POLICIES
-ALTER TABLE public.payout_requests ENABLE ROW LEVEL SECURITY;
-
-DO $policy$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can create own payout requests') THEN
-        CREATE POLICY "Users can create own payout requests" ON public.payout_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own payout requests') THEN
-        CREATE POLICY "Users can view own payout requests" ON public.payout_requests FOR SELECT USING (auth.uid() = user_id);
-    END IF;
-END $policy$;
