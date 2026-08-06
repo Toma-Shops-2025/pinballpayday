@@ -1,18 +1,17 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
-import { showInterstitial } from "@/lib/ads";
+import { showInterstitial, showRewardedAd } from "@/lib/ads";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/$portalId")({
   component: PortalContainer,
 });
 
 const PORTAL_URLS: Record<string, string> = {
-  lootably: "https://wall.lootably.com/webapp/YOUR_LOOTABLY_PLACEMENT_ID/user_id",
-  revlum: "https://revlum.com/wall/YOUR_REVLUM_API_KEY/user_id",
+  games: "https://gamedistribution.com/games?utm_source=lootlagoon&utm_medium=app",
   adgem: "https://api.adgem.com/v1/wall?appid=33143&playerid=user_id",
-  bitlabs: "https://web.bitlabs.ai/v2/YOUR_BITLABS_TOKEN/user_id",
 };
 
 function PortalContainer() {
@@ -22,6 +21,11 @@ function PortalContainer() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (portalId === "video") {
+        handleVideoAd();
+        return;
+    }
+
     async function getUserId() {
         const { data } = await supabase.auth.getUser();
         if (data?.user) setUserId(data.user.id);
@@ -30,6 +34,20 @@ function PortalContainer() {
     getUserId();
     showInterstitial();
   }, [portalId]);
+
+  const handleVideoAd = async () => {
+    const res = await showRewardedAd();
+    if (res.success) {
+        // Award 50 points for a quick video
+        await supabase.rpc('claim_game_reward', {
+            p_game: 'unity_video_vault',
+            p_score: 0,
+            p_reward_est: 50
+        });
+        toast.success("50 Points Awarded!");
+    }
+    navigate({ to: "/" });
+  };
 
   const url = userId ? PORTAL_URLS[portalId]?.replace("user_id", userId) : "";
 
