@@ -18,6 +18,7 @@ const PORTAL_URLS: Record<string, string> = {
 function PortalContainer() {
   const { portalId } = useParams({ from: "/portal/$portalId" });
   const navigate = useNavigate();
+  const { user, addCash } = useAuth();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -27,24 +28,15 @@ function PortalContainer() {
         return;
     }
 
-    async function getUserId() {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user) setUserId(data.user.id);
-        else setUserId("anonymous_pirate");
-    }
-    getUserId();
+    if (user) setUserId(user.id);
     showInterstitial();
-  }, [portalId]);
+  }, [portalId, user]);
 
   const handleVideoAd = async () => {
     const res = await showRewardedAd();
     if (res.success) {
-        // Award $0.10 for a quick video (Exactly like Play'nPayday)
-        await supabase.rpc('claim_game_reward', {
-            p_game: 'unity_video_vault',
-            p_score: 0,
-            p_reward_est: 0.10
-        });
+        // Use the unified addCash helper to ensure the UI refreshes
+        await addCash(0.10);
         toast.success("$0.10 Awarded!");
     }
     navigate({ to: "/" });
