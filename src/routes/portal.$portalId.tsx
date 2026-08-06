@@ -11,7 +11,8 @@ export const Route = createFileRoute("/portal/$portalId")({
 
 const PORTAL_URLS: Record<string, string> = {
   games: "https://gamedistribution.com/games?utm_source=lootlagoon&utm_medium=app",
-  adgem: "https://api.adgem.com/v1/wall?appid=33143&playerid=user_id",
+  gamepix: "https://www.gamepix.com/play?sid=70000",
+  fortune: "https://m.famobi.com/html5-games?partner=lootlagoon",
 };
 
 function PortalContainer() {

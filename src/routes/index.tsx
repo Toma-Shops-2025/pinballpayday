@@ -13,29 +13,38 @@ const EARNING_PORTALS = [
   {
     id: "games",
     name: "GAME GALAXY",
-    desc: "Play 1000+ games & earn",
-    color: "from-purple-600 to-blue-900",
-    accent: "text-purple-400",
+    desc: "1,000+ Premium Games",
+    color: "from-blue-600 to-cyan-900",
+    accent: "text-cyan-400",
     icon: Gamepad2,
     bonus: "INSTANT"
   },
   {
+    id: "gamepix",
+    name: "MYSTIC ARCADE",
+    desc: "Action & Adventure Hub",
+    color: "from-purple-600 to-indigo-900",
+    accent: "text-purple-400",
+    icon: Play,
+    bonus: "NEW"
+  },
+  {
     id: "video",
     name: "VIDEO VAULT",
-    desc: "Watch a quick ad for points",
-    color: "from-red-600 to-red-900",
-    accent: "text-red-400",
-    icon: Play,
+    desc: "Watch Ads, Earn Fast",
+    color: "from-red-600 to-rose-900",
+    accent: "text-rose-400",
+    icon: Zap,
     bonus: "UNLIMITED"
   },
   {
-    id: "adgem",
-    name: "GOLDEN GALLEON",
-    desc: "High paying tasks",
-    color: "from-emerald-600 to-green-900",
-    accent: "text-green-400",
+    id: "fortune",
+    name: "DAILY FORTUNE",
+    desc: "Instant Win Games",
+    color: "from-amber-500 to-orange-900",
+    accent: "text-amber-400",
     icon: Coins,
-    bonus: "BIG WINS"
+    bonus: "HOT"
   }
 ];
 
