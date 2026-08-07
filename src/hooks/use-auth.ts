@@ -15,15 +15,14 @@ export function useAuth() {
         const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
         if (data) setProfile(data);
     } catch (e) {
-        console.error("Auth Hook: Profile fetch error", e);
+        console.error("Profile Error:", e);
     } finally {
-        setLoading(false);
         isFetching.current = false;
+        setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
           setUser(session.user);
@@ -33,7 +32,6 @@ export function useAuth() {
       }
     });
 
-    // Listen for Auth Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
           setUser(session.user);
@@ -48,36 +46,51 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
+  // REAL-TIME LISTENER: This updates the balance instantly when the DB changes
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel(`ll-profile-${user.id}`)
+      .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+      }, (payload) => {
+          setProfile(payload.new);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   const addCash = useCallback(async (amount: number) => {
     if (!user) return;
     try {
         await supabase.rpc('claim_game_reward', {
-            p_game: 'app_action',
+            p_game: 'app_reward',
             p_score: 0,
             p_reward_est: amount
         });
-        // Manual refresh after action to be safe
-        fetchProfile(user.id);
     } catch (e) {
-        console.error("Auth Hook: Add cash error", e);
+        console.error("Add Cash Error:", e);
     }
-  }, [user, fetchProfile]);
+  }, [user]);
 
-  const signIn = useCallback(async (email: string, pass: string) => {
-      return await supabase.auth.signInWithPassword({ email, password: pass });
-  }, []);
-
-  const signUp = useCallback(async (email: string, pass: string, username: string) => {
-      const res = await supabase.auth.signUp({
-          email,
-          password: pass,
-          options: { data: { username } }
-      });
-      if (res.data.user) {
-          await supabase.from('profiles').insert({ id: res.data.user.id, username, email, cash_balance: 0 });
-      }
-      return res;
-  }, []);
-
-  return { user, profile, loading, signIn, signUp, signOut: () => supabase.auth.signOut(), addCash, fetchProfile, supabase };
+  return {
+    user,
+    profile,
+    loading,
+    signIn: (e: string, p: string) => supabase.auth.signInWithPassword({ email: e, password: p }),
+    signUp: async (e: string, p: string, u: string) => {
+        const res = await supabase.auth.signUp({ email: e, password: p, options: { data: { username: u } } });
+        if (res.data.user) {
+            await supabase.from('profiles').upsert({ id: res.data.user.id, username: u, email: e, cash_balance: 0 });
+        }
+        return res;
+    },
+    signOut: () => supabase.auth.signOut(),
+    addCash,
+    fetchProfile,
+    supabase
+  };
 }
