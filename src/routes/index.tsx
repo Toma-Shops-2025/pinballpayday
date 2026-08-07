@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Trophy, Coins, Play, Star, Zap, Info, ShieldCheck, ArrowUpRight, Wallet, Gamepad2, Loader2, Mail, Lock, User as UserIcon, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -48,38 +48,24 @@ function LootLagoonLobby() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Audio Logic - Safer implementation
-  useEffect(() => {
-    if (user && hasInteracted && !audioRef.current) {
-        const audio = new Audio('/bg-music.mp3');
-        audio.loop = true;
-        audio.volume = 0.15;
-        audio.play().catch(e => console.log("Lobby: Audio blocked"));
-        audioRef.current = audio;
-    }
-    return () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
-        }
-    };
-  }, [user, hasInteracted]);
 
   const checkRewards = useCallback(async () => {
     const startTime = localStorage.getItem('ll_session_start');
     if (startTime && user) {
         const start = parseInt(startTime);
-        const elapsedMinutes = Math.floor((Date.now() - start) / 60000);
+        const now = Date.now();
+        const diffMs = now - start;
         localStorage.removeItem('ll_session_start');
 
+        if (diffMs > 7200000) return; // Ignore sessions older than 2 hours
+
+        let elapsedMinutes = Math.floor(diffMs / 60000);
+        if (elapsedMinutes > 30) elapsedMinutes = 30;
+
         if (elapsedMinutes >= 1) {
-            const reward = 0.05 + (elapsedMinutes * 0.02);
+            const reward = 0.05 + (elapsedMinutes * 0.01);
             await addCash(reward);
-            toast.success(`Loot Secured! +$${reward.toFixed(2)}`, { icon: '💰' });
+            toast.success(`Loot Secured! +$${reward.toFixed(2)}`);
         }
     }
   }, [user, addCash]);
@@ -93,15 +79,14 @@ function LootLagoonLobby() {
   }, [user, checkRewards]);
 
   const openPortal = async (portalId: string, url: string) => {
-    setHasInteracted(true); // Trigger music on first portal click
     if (portalId === 'video') {
         const res = await showRewardedAd();
         if (res.success) await addCash(0.10);
         return;
     }
     localStorage.setItem('ll_session_start', Date.now().toString());
-    showInterstitial();
     if (Capacitor.isNativePlatform()) {
+        showInterstitial();
         await Browser.open({ url, toolbarColor: '#020617' });
     } else {
         window.open(url, '_blank');
@@ -111,23 +96,14 @@ function LootLagoonLobby() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-    if (!isLogin && !agreed) {
-        toast.error("Please agree to the Pirate Code.");
-        return;
-    }
+    if (!isLogin && !agreed) { toast.error("Please agree to the Pirate Code."); return; }
     setLoading(true);
     try {
-        const res = isLogin
-            ? await signIn(formData.email, formData.password)
-            : await signUp(formData.email, formData.password, formData.username);
-
-        if (res?.error) throw res.error;
-        setHasInteracted(true);
+        if (isLogin) await signIn(formData.email, formData.password);
+        else await signUp(formData.email, formData.password, formData.username);
     } catch (error: any) {
-        toast.error("Auth Failed", { description: error.message });
-    } finally {
-        setLoading(false);
-    }
+        toast.error(error.message);
+    } finally { setLoading(false); }
   }
 
   if (authLoading) return (
@@ -137,35 +113,35 @@ function LootLagoonLobby() {
   );
 
   if (!user) return (
-    <div className="min-h-screen w-full bg-black flex flex-col text-white relative p-8 justify-center overflow-y-auto" onClick={() => setHasInteracted(true)}>
+    <div className="min-h-screen w-full bg-black flex flex-col text-white relative p-8 justify-center overflow-y-auto">
         <AppBackground />
         <div className="relative z-10 text-center space-y-2 mb-12">
             <h1 className="text-6xl font-black italic tracking-tighter uppercase leading-none text-white">LOOT<br/><span className="text-[#00d2ff]">LAGOON</span></h1>
         </div>
 
-        <form onSubmit={handleAuth} className="w-full max-w-sm space-y-3 relative z-10 mx-auto">
+        <form onSubmit={handleAuth} className="w-full max-w-sm space-y-3 relative z-10 mx-auto text-left">
             {!isLogin && (
-                <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md text-left">
+                <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md">
                     <UserIcon className="h-5 w-5 text-white/40 mr-3" />
                     <input type="text" placeholder="PIRATE NAME" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 uppercase" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} required />
                 </div>
             )}
-            <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md text-left">
+            <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md">
                 <Mail className="h-5 w-5 text-white/40 mr-3" />
                 <input type="email" placeholder="EMAIL ADDRESS" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 uppercase" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md relative text-left">
+            <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center px-4 py-4 backdrop-blur-md relative">
                 <Lock className="h-5 w-5 text-white/40 mr-3" />
                 <input type={showPass ? "text" : "password"} placeholder="PASSWORD" handle-auto-focus="false" className="bg-transparent outline-none w-full font-bold text-white placeholder:text-white/20 pr-12" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 text-white/20">{showPass ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
             </div>
             {!isLogin && (
-                <div className="flex items-center gap-3 px-4 py-2 text-left">
+                <div className="flex items-center gap-3 px-4 py-2">
                     <input type="checkbox" id="terms" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="h-4 w-4 rounded border-white/10 bg-black/40 text-primary" />
-                    <label htmlFor="terms" className="text-[10px] text-white/60 font-bold uppercase italic leading-tight text-left flex-1">I am 18+ and agree to the Pirate Code</label>
+                    <label htmlFor="terms" className="text-[10px] text-white/60 font-bold uppercase italic leading-tight">I am 18+ and agree to the Pirate Code</label>
                 </div>
             )}
-            <button type="submit" disabled={loading} className="w-full bg-[#00d2ff] text-black py-5 rounded-3xl font-black uppercase tracking-widest shadow-[0_0_25px_rgba(0,210,255,0.4)] active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 italic">
+            <button type="submit" disabled={loading} className="w-full bg-[#00d2ff] text-black py-5 rounded-3xl font-black uppercase tracking-widest active:scale-95 transition-all mt-4 italic">
                 {loading && <Loader2 className="animate-spin h-5 w-5" />}
                 {isLogin ? 'Enter Lagoon' : 'Join Crew'}
             </button>
@@ -270,7 +246,7 @@ function LootLagoonLobby() {
                 <Wallet className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter italic">Wins</span>
             </button>
-            <button onClick={() => toast.info("Loot Lagoon v2.3 - Stable Build")} className="flex flex-col items-center gap-1.5 text-white/40">
+            <button onClick={() => toast.info("Loot Lagoon v2.4")} className="flex flex-col items-center gap-1.5 text-white/40">
                 <Info className="w-6 h-6" />
                 <span className="text-[8px] font-black uppercase tracking-tighter italic">Info</span>
             </button>
