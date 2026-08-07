@@ -6,8 +6,12 @@ import { routeTree } from "./routeTree.gen";
 import "./styles.css";
 import { initAds } from "./lib/ads";
 
-// Start Monetization Engine
-initAds().catch(console.error);
+// Start Monetization Engine SAFELY
+try {
+    initAds().catch(err => console.log("Ads Init Error:", err));
+} catch(e) {
+    console.log("Ads Init Exception:", e);
+}
 
 const queryClient = new QueryClient();
 const hashHistory = createHashHistory();
